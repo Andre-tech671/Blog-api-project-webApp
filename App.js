@@ -2,7 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 
 const app = express();
-const port = 4000;
+const port = process.env.PORT || 3000;
 
 // In-memory data store
 let posts = [
@@ -34,26 +34,35 @@ let posts = [
 
 let lastId = 3;
 
-// Middleware
+app.set('view engine', 'ejs');
+
+app.use(express.static("public"));
+
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// GET all posts
-app.get("/posts", (req, res) => {
+// API Routes (namespaced under /api/posts)
+
+// GET All posts
+app.get("/api/posts", (req, res) => {
   console.log(posts);
   res.json(posts);
 });
 
 // GET a specific post by id
-app.get("/posts/:id", (req, res) => {
-  const post = posts.find((p) => p.id === parseInt(req.params.id));
-  if (!post) return res.status(404).json({ message: "Post not found" });
-  res.json(post);
+app.get("/api/posts/:id", (req, res) => {
+  const id = req.params.id;
+  const post = posts.find((post) => post.id == id);
+  if (post) {
+    res.json(post);
+  } else {
+    res.status(404).json({ message: "Post not found" });
+  }
 });
 
 // POST a new post
-app.post("/posts", (req, res) => {
-  const newId = lastId += 1;
+app.post("/api/posts", (req, res) => {
+  const newId = lastId + 1;
   const post = {
     id: newId,
     title: req.body.title,
@@ -67,7 +76,7 @@ app.post("/posts", (req, res) => {
 });
 
 // PATCH a post when you just want to update one parameter
-app.patch("/posts/:id", (req, res) => {
+app.patch("/api/posts/:id", (req, res) => {
   const post = posts.find((p) => p.id === parseInt(req.params.id));
   if (!post) return res.status(404).json({ message: "Post not found" });
 
@@ -78,8 +87,8 @@ app.patch("/posts/:id", (req, res) => {
   res.json(post);
 });
 
-// DELETE a specific post by providing the post id
-app.delete("/posts/:id", (req, res) => {
+// DELETE a specific post by providing the post id.
+app.delete("/api/posts/:id", (req, res) => {
   const index = posts.findIndex((p) => p.id === parseInt(req.params.id));
   if (index === -1) return res.status(404).json({ message: "Post not found" });
 
@@ -87,6 +96,67 @@ app.delete("/posts/:id", (req, res) => {
   res.json({ message: "Post deleted" });
 });
 
+// View Routes
+
+// Route to render the main page
+app.get("/", (req, res) => {
+  res.render("index.ejs", { posts: posts });
+});
+
+// Route to render the edit page
+app.get("/new", (req, res) => {
+  res.render("modify.ejs", { heading: "New Post", submit: "Create Post" });
+});
+
+app.get("/edit/:id", (req, res) => {
+  const post = posts.find((p) => p.id === parseInt(req.params.id));
+  if (post) {
+    res.render("modify.ejs", {
+      heading: "Edit Post",
+      submit: "Update Post",
+      post: post,
+    });
+  } else {
+    res.status(404).json({ message: "Post not found" });
+  }
+});
+
+// Create a new post (from form)
+app.post("/api/posts", (req, res) => {
+  const newId = lastId + 1;
+  const post = {
+    id: newId,
+    title: req.body.title,
+    content: req.body.content,
+    author: req.body.author,
+    date: new Date(),
+  };
+  lastId = newId;
+  posts.push(post);
+  res.redirect("/");
+});
+
+// Partially update a post (from form)
+app.post("/api/posts/:id", (req, res) => {
+  const post = posts.find((p) => p.id === parseInt(req.params.id));
+  if (!post) return res.status(500).json({ message: "Post not found" });
+
+  if (req.body.title) post.title = req.body.title;
+  if (req.body.content) post.content = req.body.content;
+  if (req.body.author) post.author = req.body.author;
+
+  res.redirect("/");
+});
+
+// Delete a post (from link)
+app.get("/api/posts/delete/:id", (req, res) => {
+  const index = posts.findIndex((p) => p.id === parseInt(req.params.id));
+  if (index === -1) return res.status(500).json({ message: "Post not found" });
+
+  posts.splice(index, 1);
+  res.redirect("/");
+});
+
 app.listen(port, () => {
-  console.log(`API is running at http://localhost:${port}`);
+  console.log(`Server is running on http://localhost:${port}`);
 });
