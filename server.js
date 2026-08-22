@@ -4,7 +4,8 @@ import axios from "axios";
 
 const app = express();
 const port = 3000;
-const API_URL = "http://localhost:4000";
+const API_URL = process.env.API_URL || "http://localhost:4000";
+
 
 app.set('view engine', 'ejs');
 
