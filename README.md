@@ -1,100 +1,173 @@
 # Blog API Project
 
-This is a simple blog application built as part of Angela Yu's Fullstack Web Development Bootcamp. It demonstrates building a RESTful API with Express.js and creating a web interface using EJS templates.
+A small full-stack blog application built for Angela Yu's Fullstack Web Development Bootcamp. It demonstrates how a REST API, a server-rendered EJS interface, and an in-memory data store work together.
+
+```text
+Browser -> server.js (EJS UI, port 3000) -> index.js (REST API, port 4000)
+```
 
 ## Features
 
-- **Backend API**: RESTful API for managing blog posts (CRUD operations)
-- **Frontend Interface**: Web-based UI for viewing, creating, editing, and deleting posts
-- **In-Memory Storage**: Posts are stored in memory (no database required)
-- **Responsive Design**: Clean, modern UI with CSS styling
+- List all blog posts.
+- Create, edit, and delete posts through the web interface.
+- Expose the same operations through a JSON REST API.
+- Seed three example posts whenever the API process starts.
 
-## Project Structure
+## Technology Stack
 
+| Layer | Technology | Purpose |
+| --- | --- | --- |
+| Runtime | Node.js | Runs both servers |
+| API and UI server | Express 4 | Routing and HTTP responses |
+| UI rendering | EJS | Server-side HTML templates |
+| HTTP client | Axios | UI-to-API requests |
+| Body parsing | body-parser | JSON and URL-encoded request bodies |
+| Styling | Plain CSS | Layout, forms, buttons, and post list |
+| Persistence | JavaScript array | Temporary in-memory storage |
+
+## Repository Structure
+
+```text
+.
+├── index.js                 # REST API on port 4000
+├── server.js                # EJS UI server and API proxy on port 3000
+├── package.json             # Project metadata and npm scripts
+├── package-lock.json        # Locked dependency tree
+├── TODO.md                  # Deployment and merge notes
+├── public/styles/main.css   # Browser styles
+├── views/index.ejs          # Post list page
+├── views/modify.ejs         # Create/edit form
+└── docs/UI-DESIGN.md        # UI design and interaction specification
 ```
-├── index.js          # Incomplete API implementation (challenges)
-├── server.js         # Frontend server (serves web interface)
-├── solution.js       # Complete API implementation
-├── package.json      # Dependencies and scripts
-├── public/           # Static assets
-│   └── styles/
-│       └── main.css  # CSS styling
-└── views/            # EJS templates
-    ├── index.ejs     # Main page (list posts)
-    └── modify.ejs    # New/Edit post form
-```
 
-## Installation
+## Prerequisites And Installation
 
-1. Clone or download the project files
-2. Navigate to the project directory
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
+- Node.js 18 or newer is recommended.
+- npm, included with Node.js.
 
-## Usage
-
-### Running the API Server
-
-To run the complete API server (solution):
 ```bash
-node solution.js
+npm install
 ```
-The API will be available at `http://localhost:4000`
 
-To run the challenge implementation:
+`server.js` imports Axios. Axios is present in `package-lock.json`; if a clean install reports it missing, run `npm install axios`.
+
+## Running Locally
+
+The current implementation requires two terminals.
+
+**Terminal 1: start the API**
+
 ```bash
 node index.js
 ```
-The API will be available at `http://localhost:4000`
 
-### Running the Frontend
+The API listens at `http://localhost:4000`.
 
-In a separate terminal:
+**Terminal 2: start the web interface**
+
 ```bash
 node server.js
 ```
-The web interface will be available at `http://localhost:3000`
 
-### API Endpoints
+Open `http://localhost:3000`. Start the API before the UI server so the home page can load posts.
 
-- `GET /posts` - Retrieve all posts
-- `GET /posts/:id` - Retrieve a specific post by ID
-- `POST /posts` - Create a new post
-  - Body: `{ "title": "string", "content": "string", "author": "string" }`
-- `PATCH /posts/:id` - Update a post (partial update)
-  - Body: `{ "title": "string", "content": "string", "author": "string" }`
-- `DELETE /posts/:id` - Delete a post by ID
+> `package.json` currently points its `start` script at `App.js`, but `App.js` is not in the repository. Until the planned merge in `TODO.md` is completed, use the commands above.
 
-### Sample Posts
+## API Reference
 
-The application comes with 3 sample blog posts:
-1. "The Rise of Decentralized Finance" by Alex Thompson
-2. "The Impact of Artificial Intelligence on Modern Businesses" by Mia Williams
-3. "Sustainable Living: Tips for an Eco-Friendly Lifestyle" by Samuel Green
+The API base URL is `http://localhost:4000`.
 
-## Technologies Used
+### Post resource
 
-- **Backend**: Node.js, Express.js
-- **Frontend**: EJS (Embedded JavaScript Templates), HTML, CSS
-- **HTTP Client**: Axios (for API communication)
-- **Middleware**: Body-parser for parsing request bodies
+```json
+{
+  "id": 1,
+  "title": "The Rise of Decentralized Finance",
+  "content": "Decentralized Finance ...",
+  "author": "Alex Thompson",
+  "date": "2023-08-01T10:00:00Z"
+}
+```
+
+| Method | Endpoint | Description | Success |
+| --- | --- | --- | --- |
+| `GET` | `/posts` | Return every post | `200` and an array |
+| `GET` | `/posts/:id` | Return one post by numeric ID | `200` and an object |
+| `POST` | `/posts` | Create a post | `201` and the created object |
+| `PATCH` | `/posts/:id` | Update supplied fields only | `200` and the updated object |
+| `DELETE` | `/posts/:id` | Remove a post | `200` and confirmation |
+
+### Create a post
+
+```bash
+curl -X POST http://localhost:4000/posts \
+  -H "Content-Type: application/json" \
+  -d '{"title":"A new post","content":"Post body","author":"Author name"}'
+```
+
+The server assigns the next ID and sets `date` to the current time. The current API does not validate required fields, so clients should send non-empty values.
+
+### Update a post
+
+```bash
+curl -X PATCH http://localhost:4000/posts/1 \
+  -H "Content-Type: application/json" \
+  -d '{"title":"An updated title"}'
+```
+
+Only supplied truthy values for `title`, `content`, and `author` are changed.
+
+### Delete a post
+
+```bash
+curl -X DELETE http://localhost:4000/posts/1
+```
+
+Unknown post IDs return `404` with `{ "message": "Post not found" }`.
+
+## Web Routes
+
+| Method | Route | Behavior |
+| --- | --- | --- |
+| `GET` | `/` | Fetch posts and render `index.ejs` |
+| `GET` | `/new` | Render an empty create form |
+| `GET` | `/edit/:id` | Fetch a post and render the edit form |
+| `POST` | `/api/posts` | Forward form data to API `POST /posts`, then redirect |
+| `POST` | `/api/posts/:id` | Forward form data to API `PATCH /posts/:id`, then redirect |
+| `GET` | `/api/posts/delete/:id` | Forward delete request, then redirect |
+
+Static assets are served from `public/`, including `/styles/main.css`.
+
+## Data Lifecycle And Limitations
+
+Posts live in the `posts` array inside `index.js`. Data is lost whenever the API process restarts. IDs are generated from an in-memory counter, so this project is intended for learning and local experimentation rather than production use.
+
+- No database or durable persistence.
+- No authentication or authorization.
+- No request validation or sanitization.
+- No pagination, search, or sorting.
+- No automated tests.
+- Delete is triggered by a `GET` UI route.
+- API and UI ports are hard-coded.
+
+## Suggested Next Improvements
+
+1. Merge the API and UI into the planned `App.js`, or add separate npm scripts for both servers.
+2. Add Axios to `package.json` if it is not installed by the local lockfile.
+3. Move `API_URL` and ports into environment variables.
+4. Add validation with clear `400` responses.
+5. Replace the array with SQLite, PostgreSQL, or another persistent store.
+6. Use a state-changing `POST` or `DELETE` action for deletion and add confirmation.
+7. Add API tests and UI smoke tests for create, edit, and delete.
 
 ## Learning Objectives
 
-This project covers:
-- Building RESTful APIs with Express.js
-- Handling HTTP methods (GET, POST, PATCH, DELETE)
-- Server-side rendering with EJS
-- Routing and middleware
-- In-memory data management
-- Frontend-backend communication
+This exercise practices REST conventions, Express routing, HTTP methods and status codes, middleware, EJS rendering, form handling, Axios-based service communication, and the boundary between a frontend server and an API.
 
-## Challenges
+## UI Design
 
-The `index.js` file contains commented challenges for implementing the API endpoints. Compare your implementation with `solution.js` to verify correctness.
+See [docs/UI-DESIGN.md](docs/UI-DESIGN.md) for the interface inventory and complete UI design specification.
 
 ## License
 
-This project is for educational purposes as part of the Fullstack Web Development Bootcamp by Angela Yu.
+This project is for educational purposes as part of Angela Yu's Fullstack Web Development Bootcamp.
